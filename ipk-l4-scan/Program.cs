@@ -382,10 +382,6 @@ namespace IPK_L4_Scanner{
                        
                         // Creates SYN packed based on if its IPv4 or IPv6 address
                         byte[] packet = isIPv4 ? CreateTcpSynPacket4(ipAddress, port, interfaceName) : CreateTcpSynPacket6(ipAddress, port, interfaceName);
-                        // Odoslanie SYN paketu
-                        //Console.WriteLine("posielam packet:");
-                       // PrintPacket(packet);
-
                        //sends SYN packet
                         socket.SendTo(packet, endPoint);
                     }
@@ -446,16 +442,9 @@ namespace IPK_L4_Scanner{
             //opens port for capture
             selectedDevice.Open(DeviceModes.Promiscuous);
             
-            // Console.WriteLine($"tcp and src host {ip} and src port {port}");
-            
-            //selectedDevice.Filter = filter;
 
             //starts capture
             selectedDevice.StartCapture();
-           // scanPorts();
-            //System.Threading.Thread.Sleep(timeout);
-           // selectedDevice.StopCapture();
-            //selectedDevice.Close();
             return selectedDevice;
         }
 
@@ -478,15 +467,12 @@ namespace IPK_L4_Scanner{
             {
                 foreach (var port in tcpPorts)
                 {
-                    //Console.WriteLine("\nTCP\n");
-                    //Console.WriteLine($"{ipAddress.Key}");
                     string filter = $"tcp and src host {ipAddress.Key} and src port {port}";
                     using (var waitHandle = new ManualResetEventSlim(false))  // Event na blokovanie
                     {
                         try
                         {
                             device.Filter = filter;  //Sets filter
-                           // Console.WriteLine($"Set filter: {filter}");
 
                             void PacketHandler(object s, PacketCapture e)
                             {
@@ -522,7 +508,6 @@ namespace IPK_L4_Scanner{
                         try
                         {
                             device.Filter = filter;
-                           // Console.WriteLine($"Set filter: {filter} and src port {port}");
 
                             void PacketHandler(object s, PacketCapture e)
                             {
@@ -531,7 +516,6 @@ namespace IPK_L4_Scanner{
                             device.OnPacketArrival += PacketHandler;
                             
                             // Sends UDP packet
-                            //Console.WriteLine($"{port}");
                             Scanner.sendPacket(port, ipAddress.Key, ipAddress.Value, interfaceName, false);
 
                             //waits for ICMP response
@@ -564,10 +548,6 @@ namespace IPK_L4_Scanner{
             var rawPacket = e.GetPacket();
             //transforms packet to byte array
             byte[] data = rawPacket.Data;
-           // Console.WriteLine($"\n");
-            //PrintPacket(data);
-            //Console.WriteLine($"Prijmam packet: o dlzke {data.Length}\n");
-
             //checks minimal packet length
             if (data.Length < 34){ 
                 Console.WriteLine("Invalid packet length");
@@ -586,25 +566,16 @@ namespace IPK_L4_Scanner{
             byte versionAndHeaderLength = data[4 + offset];
             byte version = (byte)((versionAndHeaderLength >> 4) & 0x0F);
             byte ipHeaderLength = (byte)((versionAndHeaderLength & 0x0F) * 4); 
-           // Console.WriteLine($"IP Version: {version}");
-            //Console.WriteLine($"ethtype: {etherType}");
-            //return;
-
             //IPv4 section
             if (version == 4)
             {
                 //gets protocol type out of packet data
                 byte protocol = data[13 + offset];
-               // Console.WriteLine($"Protocol prichadzajuceho je: {protocol}");
-                //return;
-               // Console.WriteLine("Received IPv4 Packet");
         
                 if (protocol == 6) // TCP
                 {
                     string sourceIP = new IPAddress(new ReadOnlySpan<byte>(data, 20 + offset, 4)).ToString();
                     ushort sourcePort = (ushort)((data[24 + offset] << 8) | data[25 + offset]);
-                    //Console.WriteLine("TCP Packet");
-                   // Console.WriteLine($"ip: {sourceIP}");
                     
                     // TCP hreader starts after IP header
                     int tcpOffset = 4 + ipHeaderLength; // 4 je offset prvých metadát
@@ -620,8 +591,6 @@ namespace IPK_L4_Scanner{
                     bool isACK = (tcpFlags & 0x10) != 0;
                     bool isURG = (tcpFlags & 0x20) != 0;
                     
-                   //Console.WriteLine($"TCP Flags: FIN={isFIN}, SYN={isSYN}, RST={isRST}, PSH={isPSH}, ACK={isACK}, URG={isURG}");
-                    
                     // Based on assignment
                     if (isRST)
                     {
@@ -633,17 +602,9 @@ namespace IPK_L4_Scanner{
                     }
                 //UDP section
                 }else if(protocol == 1){
-                    //Console.WriteLine($"{data[25]}");
                     string sourceIP = new IPAddress(new ReadOnlySpan<byte>(data, 48 + offset, 4)).ToString();
                     ushort sourcePort = (ushort)((data[54 + offset] << 8) | data[55 + offset]);
-                    //Console.WriteLine($"ip:{sourceIP} port: {sourcePort}");
-                   // if(data[24 + offset] == 3 && data[25 + offset] == 3){  
-                        Console.WriteLine($"{sourceIP} {sourcePort} udp closed");
-                   // }else{
-                        //Console.WriteLine($"{sourceIP} {sourcePort} udp open");
-                   // }
-                    
-                    //Console.WriteLine("UDP Packet");
+                    Console.WriteLine($"{sourceIP} {sourcePort} udp closed");
                 }
                 
             }
@@ -651,15 +612,10 @@ namespace IPK_L4_Scanner{
             else if (version == 6)
             {
                 byte protocol = data[10 + offset];
-               //Console.WriteLine($"Protocol prichadzajuceho je: {protocol}");
-                //return;
                 //TCP part
                 if(protocol == 6){
                     string sourceIP = new IPAddress(new ReadOnlySpan<byte>(data, 28 + offset, 16)).ToString();
                     ushort sourcePort = (ushort)((data[44 + offset] << 8) | data[45 + offset]);
-                    //Console.WriteLine("Received IPv6 Packet");
-                    //Console.WriteLine($"ip: {sourceIP}");
-                    //Console.WriteLine($"port: {sourcePort}");
 
                     //TCP header starts after IPv6 header = offset 40
                     int tcpOffset = 40;
@@ -674,7 +630,6 @@ namespace IPK_L4_Scanner{
                     bool isPSH = (tcpFlags & 0x08) != 0;
                     bool isACK = (tcpFlags & 0x10) != 0;
                     bool isURG = (tcpFlags & 0x20) != 0;
-                   // Console.WriteLine($"TCP Flags: FIN={isFIN}, SYN={isSYN}, RST={isRST}, PSH={isPSH}, ACK={isACK}, URG={isURG}");
 
                     // Based on assignment
                     if (isRST)
@@ -689,13 +644,9 @@ namespace IPK_L4_Scanner{
                 }else if(protocol == 58){
                     string sourceIP = new IPAddress(new ReadOnlySpan<byte>(data, 76 + offset, 16)).ToString();
                     ushort sourcePort = (ushort)((data[94 + offset] << 8) | data[95 + offset]);
-                   // if(data[44 + offset] == 1 && data[45 + offset] == 4){
                         Console.WriteLine($"{sourceIP} {sourcePort} udp closed");
-                   // }
-                    //Console.WriteLine("UDP Packet");
                 }
             }
-               // PrintPacket(data);
 
         }
         /// <summary>
